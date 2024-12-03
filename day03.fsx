@@ -2,9 +2,9 @@ open System.IO
 open System.Text.RegularExpressions
 
 let partOne input =
-    Regex.Matches(input, @"(mul\((\d+)\,(\d+)\))")
+    Regex.Matches(input, @"mul\((\d+)\,(\d+)\)")
     |> Seq.cast<Match>
-    |> Seq.sumBy (_.Groups >> Seq.skip 2 >> Seq.map (_.Value >> int) >> Seq.reduce (*))
+    |> Seq.sumBy (_.Groups >> Seq.skip 1 >> Seq.map (_.Value >> int) >> Seq.reduce (*))
 
 partOne "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))"
 
@@ -21,9 +21,8 @@ let partTwo input =
             enabled <- false
         else if entry.Groups[8].Value = "do" then
             enabled <- true
-
         else
-            failwithf "Unable to handle group %A" entry.Groups
+            failwithf "Unable to handle %A" entry
     acc
 
 partTwo "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))"
