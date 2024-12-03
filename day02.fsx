@@ -25,20 +25,27 @@ let reports = input |> Seq.map parse
 
 let isBetween min max value = min <= value && value <= max
 
+let isSafeIncrement dir x y =
+    abs (y - x) |> isBetween 1 3 && compare y x = dir
+
 let countIncrements (report: Report) =
-    let rec imp acc direction x xs =
+    let rec loop acc dir x xs =
         match xs with
         | [] -> acc
-        | y :: ys when abs (y - x) |> isBetween 1 3 && compare y x = direction -> imp (acc + 1) direction y ys
-        | _ :: z :: zs when abs (z - x) |> isBetween 1 3 && compare z x = direction -> imp (acc + 1) direction z zs
+        | y :: z :: zs when isSafeIncrement dir x y && isSafeIncrement dir x z ->
+            max (loop (acc + 1) dir y (z :: zs)) (loop (acc + 1) dir z zs)
+        | y :: ys when isSafeIncrement dir x y -> loop (acc + 1) dir y ys
+        | _ :: z :: zs when isSafeIncrement dir x z -> loop (acc + 1) dir z zs
         | _ -> acc
+
+    let imp dir x xs = if dir = 0 then 0 else loop 0 dir x xs
 
     match report with
     | x :: y :: z :: zs ->
-        (imp 0 (compare y x) x (y :: z :: zs))
-        |> max (imp 0 (compare z x) x (z :: zs))
-        |> max (imp 0 (compare z y) y (z :: zs))
-    | x :: [ y ] -> imp 0 (compare y x) x [ y ]
+        (imp (compare y x) x (y :: z :: zs))
+        |> max (imp (compare z x) x (z :: zs))
+        |> max (imp (compare z y) y (z :: zs))
+    | x :: [ y ] -> imp (compare y x) x [ y ]
     | _ -> 0
 
 let partOne =
