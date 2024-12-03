@@ -9,29 +9,21 @@ let partOne input =
 partOne "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))"
 
 let partTwo input =
-    let (|Mul|Do|Dont|) (entry: Match) =
-        let groups = entry.Groups |> Seq.skip 1 |> Seq.toArray
-        if groups[1].Value = "mul" then
-            Mul (int groups[2].Value, int groups.[3].Value)
-        else if groups[5].Value = "don't" then
-            Dont
-        else if groups[7].Value = "do" then
-            Do
-        else
-            failwithf "Unable to handle group %A" groups
-    
     let mutable enabled = true
     let mutable acc = 0
     for entry in Regex.Matches(input, @"((mul)\((\d+)\,(\d+)\))|((don't)\(\))|((do)\(\))") do
-        match entry with
-        | Mul (x, y) ->
+        if entry.Groups[2].Value = "mul" then
             if enabled then
+                let x = entry.Groups[3].Value |> int
+                let y = entry.Groups[4].Value |> int
                 acc <- acc + x * y
-        | Do ->
-            enabled <- true
-        | Dont ->
+        else if entry.Groups[6].Value = "don't" then
             enabled <- false
+        else if entry.Groups[8].Value = "do" then
+            enabled <- true
 
+        else
+            failwithf "Unable to handle group %A" entry.Groups
     acc
 
 partTwo "xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))"
