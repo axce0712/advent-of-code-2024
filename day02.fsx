@@ -25,28 +25,38 @@ let reports = input |> Seq.map parse
 
 let isBetween min max value = min <= value && value <= max
 
-let countIncrements (report: Report) =
-    let rec imp acc direction x xs =
-        match xs with
-        | [] -> acc
-        | y :: ys when abs (y - x) |> isBetween 1 3 && compare y x = direction -> imp (acc + 1) direction y ys
-        | _ :: z :: zs when abs (z - x) |> isBetween 1 3 && compare z x = direction -> imp (acc + 1) direction z zs
-        | _ -> acc
+let isSafeIncrement dir x y =
+    abs (y - x) |> isBetween 1 3 && compare y x = dir
+
+let countIncrements tolerateLevels report =
+    let rec loop dir acc tolerateLevels x xs =
+        if tolerateLevels < 0 then
+            acc
+        else
+            match xs with
+            | [] -> acc
+            | y :: z :: zs when isSafeIncrement dir x y && isSafeIncrement dir x z ->
+                max (loop dir (acc + 1) tolerateLevels y (z :: zs)) (loop dir (acc + 1) (tolerateLevels - 1) z zs)
+            | y :: ys when isSafeIncrement dir x y -> loop dir (acc + 1) tolerateLevels y ys
+            | _ :: z :: zs when isSafeIncrement dir x z -> loop dir (acc + 1) (tolerateLevels - 1) z zs
+            | _ -> acc
+
+    let imp dir tolerateLevels x xs = if dir = 0 then 0 else loop dir 0 tolerateLevels x xs
 
     match report with
     | x :: y :: z :: zs ->
-        (imp 0 (compare y x) x (y :: z :: zs))
-        |> max (imp 0 (compare z x) x (z :: zs))
-        |> max (imp 0 (compare z y) y (z :: zs))
-    | x :: [ y ] -> imp 0 (compare y x) x [ y ]
+        (imp (compare y x) tolerateLevels x (y :: z :: zs))
+        |> max (imp (compare z x) (tolerateLevels - 1) x (z :: zs))
+        |> max (imp (compare z y) (tolerateLevels - 1) y (z :: zs))
+    | x :: [ y ] -> imp (compare y x) tolerateLevels x [ y ]
     | _ -> 0
 
 let partOne =
     reports
-    |> Seq.filter (fun report -> (report.Length - countIncrements report) = 1)
+    |> Seq.filter (fun report -> (report.Length - countIncrements 0 report) = 1)
     |> Seq.length
 
 let partTwo =
     reports
-    |> Seq.filter (fun report -> (report.Length - countIncrements report) |> isBetween 1 2)
+    |> Seq.filter (fun report -> (report.Length - countIncrements 1 report) |> isBetween 1 2)
     |> Seq.length
