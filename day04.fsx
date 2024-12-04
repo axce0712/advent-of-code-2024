@@ -14,18 +14,6 @@ let rec countOccurrence (input: char[,]) ((dx, dy): int * int) (word: ReadOnlySp
     else
         0
 
-let countOccurrences (word: string) (directions: list<int * int>) (x, y) (input: char[,]) : int =
-    if input[y, x] = word[0] then
-        let mutable count = 0
-        let span = word.AsSpan()
-
-        for (dx, dy) in directions do
-            count <- count + countOccurrence input (dx, dy) (span.Slice(1)) (x + dx, y + dy)
-
-        count
-    else
-        0
-
 let search (word: string) (directions: list<int * int>) (input: char[,]) : int =
     match word.Length with
     | 0 -> 0
@@ -34,7 +22,8 @@ let search (word: string) (directions: list<int * int>) (input: char[,]) : int =
 
         for y in 0 .. input.GetLength(0) - 1 do
             for x in 0 .. input.GetLength(1) - 1 do
-                count <- count + countOccurrences word directions (x, y) input
+                for dir in directions do
+                    count <- count + countOccurrence input dir (word.AsSpan()) (x, y)
 
         count
 
