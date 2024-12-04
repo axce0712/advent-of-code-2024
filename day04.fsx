@@ -1,3 +1,4 @@
+open System
 open System.IO
 
 let parse (input: seq<string>) = array2D input
@@ -5,21 +6,21 @@ let parse (input: seq<string>) = array2D input
 let isInRange (x, y) (input: 'a[,]) =
     x >= 0 && x < input.GetLength(1) && y >= 0 && y < input.GetLength(0)
 
-let countOccurrences (word: string) (directions: list<int * int>) (x, y) (input: char[,]) : int =
-    let rec hasWord (word: string) ((dx, dy): int * int) (wordPosition: int) (x, y) =
-        if wordPosition = word.Length then
-            true
-        else if isInRange (x, y) input && input[y, x] = word[wordPosition] then
-            hasWord word (dx, dy) (wordPosition + 1) (x + dx, y + dy)
-        else
-            false
+let rec countOccurrence (input: char[,]) ((dx, dy): int * int) (word: ReadOnlySpan<char>) ((x, y): int * int) : int =
+    if word.IsEmpty then
+        1
+    else if isInRange (x, y) input && input[y, x] = word[0] then
+        countOccurrence input (dx, dy) (word.Slice(1)) (x + dx, y + dy)
+    else
+        0
 
+let countOccurrences (word: string) (directions: list<int * int>) (x, y) (input: char[,]) : int =
     if input[y, x] = word[0] then
         let mutable count = 0
+        let span = word.AsSpan()
 
         for (dx, dy) in directions do
-            if hasWord word (dx, dy) 1 (x + dx, y + dy) then
-                count <- count + 1
+            count <- count + countOccurrence input (dx, dy) (span.Slice(1)) (x + dx, y + dy)
 
         count
     else
