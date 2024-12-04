@@ -22,15 +22,14 @@ let search (word: string) (directions: list<int * int>) (input: char[,]) : int =
 
         for y in 0 .. input.GetLength(0) - 1 do
             for x in 0 .. input.GetLength(1) - 1 do
-                for dir in directions do
-                    count <- count + countOccurrence input dir (word.AsSpan()) (x, y)
+                if input[y, x] = word[0] then
+                    for (dx, dy) as dir in directions do
+                        count <- count + countOccurrence input dir (word.AsSpan().Slice(1)) (x + dx, y + dy)
 
         count
 
-let solve (word: string) (directions: list<int * int>) (input: char[,]) : int = search word directions input
-
 let partOne (input: char[,]) =
-    solve "XMAS" [ (0, 1); (1, 0); (0, -1); (-1, 0); (1, 1); (-1, -1); (1, -1); (-1, 1) ] input
+    search "XMAS" [ (0, 1); (1, 0); (0, -1); (-1, 0); (1, 1); (-1, -1); (1, -1); (-1, 1) ] input
 
 let partTwo (input: char[,]) =
     let mutable count = 0
