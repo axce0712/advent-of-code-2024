@@ -4,7 +4,7 @@ open System.Text.RegularExpressions
 let partOne input =
     Regex.Matches(input, @"mul\((\d+)\,(\d+)\)")
     |> Seq.cast<Match>
-    |> Seq.sumBy (_.Groups >> Seq.skip 1 >> Seq.map (_.Value >> int) >> Seq.reduce (*))
+    |> Seq.sumBy (fun m -> int m.Groups[1].Value * int m.Groups[2].Value)
 
 partOne "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(32,64]then(mul(11,8)mul(8,5))"
 
