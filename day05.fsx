@@ -1,29 +1,68 @@
+open System
+open System.Collections.Generic
 open System.IO
+open Microsoft.FSharp.NativeInterop
+
+#nowarn "9"
+
+type ReadOnlySpan<'T> with
+
+    member this.Item
+        with get (range: Range) =
+            let length =
+                if range.End.IsFromEnd then
+                    this.Length - range.End.Value - range.Start.Value
+                else
+                    range.End.Value - range.Start.Value
+
+            this.Slice(range.Start.Value, length)
+
+let parse (lines: seq<string>) =
+    let rules = Dictionary<int, List<int>>()
+    let pageNumbers = List()
+    let mutable isPageNumbersPart = false
+
+    for line in lines do
+        if not isPageNumbersPart then
+            if line = "" then
+                isPageNumbersPart <- true
+            else
+                let span: ReadOnlySpan<char> = line.AsSpan()
+                let ranges = Span<Range>(NativePtr.toVoidPtr (NativePtr.stackalloc<Range> 2), 2)
+                MemoryExtensions.Split(span, ranges, '|') |> ignore
+                let key = Int32.Parse(span[ranges[0]])
+                let value = Int32.Parse(span[ranges[1]])
+
+                match rules.TryGetValue(key) with
+                | true, values -> values.Add(value)
+                | false, _ ->
+                    let values = ResizeArray()
+                    values.Add(value)
+                    rules.Add(key, values)
+        else
+            let span = line.AsSpan()
+            let length = span.Count(',') + 1
+
+            let ranges =
+                Span<Range>(NativePtr.toVoidPtr (NativePtr.stackalloc<Range> length), length)
+
+            MemoryExtensions.Split(span, ranges, ',') |> ignore
+            let values = Array.zeroCreate<int> length
+
+            for idx in 0 .. length - 1 do
+                let value = Int32.Parse(span[ranges[idx]])
+                values[idx] <- value
+
+            pageNumbers.Add(values)
+
+    let mappedRules =
+        rules |> Seq.map (fun kvp -> kvp.Key, kvp.Value.ToArray()) |> Map.ofSeq
+
+    mappedRules, pageNumbers.ToArray()
 
 type Rules = Map<int, int[]>
 
 type PageNumbers = int[]
-
-let parse (input: string) : Rules * PageNumbers[] =
-    let rulesPart, pageNumbersPart =
-        let parts = input.Split("\n\n")
-        parts[0], parts[1]
-
-    let rules =
-        rulesPart.Split('\n')
-        |> Seq.map (fun rule ->
-            let parts = rule.Split('|')
-            int parts.[0], int parts.[1])
-        |> Seq.groupBy fst
-        |> Seq.map (fun (key, values) -> key, values |> Seq.map snd |> Seq.toArray)
-        |> Map.ofSeq
-
-    let pageNumbers =
-        pageNumbersPart.Split('\n')
-        |> Seq.map (fun line -> line.Split(',') |> Seq.map int |> Seq.toArray)
-        |> Seq.toArray
-
-    rules, pageNumbers
 
 let sortByRules (rules: Rules) (pageNumbers: PageNumbers) : PageNumbers =
     let copy = Array.copy pageNumbers
@@ -51,7 +90,6 @@ let partOne rules pageNumbers =
 let partTwo rules pageNumbers =
     solve (fun xs ys -> not (Array.forall2 (=) xs ys)) rules pageNumbers
 
-let input = File.ReadAllText("./input/day05.txt")
-let rules, pageNumbers = parse input
+let rules, pageNumbers = File.ReadLines("./input/day05.txt") |> parse
 partOne rules pageNumbers
 partTwo rules pageNumbers
