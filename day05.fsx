@@ -1,21 +1,6 @@
 open System
 open System.Collections.Generic
 open System.IO
-open Microsoft.FSharp.NativeInterop
-
-#nowarn "9"
-
-type ReadOnlySpan<'T> with
-
-    member this.Item
-        with get (range: Range) =
-            let length =
-                if range.End.IsFromEnd then
-                    this.Length - range.End.Value - range.Start.Value
-                else
-                    range.End.Value - range.Start.Value
-
-            this.Slice(range.Start.Value, length)
 
 let parse (lines: seq<string>) =
     let rules = Dictionary<int, List<int>>()
@@ -28,10 +13,8 @@ let parse (lines: seq<string>) =
                 isPageNumbersPart <- true
             else
                 let span: ReadOnlySpan<char> = line.AsSpan()
-                let ranges = Span<Range>(NativePtr.toVoidPtr (NativePtr.stackalloc<Range> 2), 2)
-                MemoryExtensions.Split(span, ranges, '|') |> ignore
-                let key = Int32.Parse(span[ranges[0]])
-                let value = Int32.Parse(span[ranges[1]])
+                let key = Int32.Parse(span.Slice(0, span.IndexOf('|')))
+                let value = Int32.Parse(span.Slice(span.IndexOf('|') + 1))
 
                 match rules.TryGetValue(key) with
                 | true, values -> values.Add(value)
@@ -40,27 +23,24 @@ let parse (lines: seq<string>) =
                     values.Add(value)
                     rules.Add(key, values)
         else
-            let span = line.AsSpan()
+            let mutable span = line.AsSpan()
             let length = span.Count(',') + 1
-
-            let ranges =
-                Span<Range>(NativePtr.toVoidPtr (NativePtr.stackalloc<Range> length), length)
-
-            MemoryExtensions.Split(span, ranges, ',') |> ignore
             let values = Array.zeroCreate<int> length
-
-            for idx in 0 .. length - 1 do
-                let value = Int32.Parse(span[ranges[idx]])
+            let mutable next = span.IndexOf(',')
+            let mutable idx = 0
+            while next >= 0 do
+                let value = Int32.Parse(span.Slice(0, next))
                 values[idx] <- value
+                span <- span.Slice(next + 1)
+                next <- span.IndexOf(',')
+                idx <- idx + 1
 
+            values[idx] <- Int32.Parse(span)
             pageNumbers.Add(values)
 
-    let mappedRules =
-        rules |> Seq.map (fun kvp -> kvp.Key, kvp.Value.ToArray()) |> Map.ofSeq
+    rules, pageNumbers
 
-    mappedRules, pageNumbers.ToArray()
-
-type Rules = Map<int, int[]>
+type Rules = Dictionary<int, List<int>>
 
 type PageNumbers = int[]
 
@@ -69,18 +49,20 @@ let sortByRules (rules: Rules) (pageNumbers: PageNumbers) : PageNumbers =
 
     copy
     |> Array.sortInPlaceWith (fun x y ->
-        match Map.tryFind x rules, Map.tryFind y rules with
-        | Some xs, _ when xs |> Array.contains y -> -1
-        | _, Some ys when ys |> Array.contains x -> 1
-        | _ -> 0)
+        match rules.TryGetValue(x) with
+        | true, xs when xs.Contains(y) -> -1
+        | _ ->
+            match rules.TryGetValue(y) with
+            | true, ys when ys.Contains(x) -> 1
+            | _ -> 0)
 
     copy
 
 let middlePageNumber (pageNumbers: PageNumbers) = pageNumbers[pageNumbers.Length / 2]
 
-let solve (predicate: PageNumbers -> PageNumbers -> bool) (rules: Rules) (pageNumbers: PageNumbers[]) : int =
+let solve (predicate: PageNumbers -> PageNumbers -> bool) (rules: Rules) (pageNumbers: List<PageNumbers>) : int =
     pageNumbers
-    |> Array.sumBy (fun xs ->
+    |> Seq.sumBy (fun xs ->
         let sorted = sortByRules rules xs
         if predicate xs sorted then middlePageNumber sorted else 0)
 
@@ -88,7 +70,7 @@ let partOne rules pageNumbers =
     solve (Array.forall2 (=)) rules pageNumbers
 
 let partTwo rules pageNumbers =
-    solve (fun xs ys -> not (Array.forall2 (=) xs ys)) rules pageNumbers
+    solve (Array.exists2 (<>)) rules pageNumbers
 
 let rules, pageNumbers = File.ReadLines("./input/day05.txt") |> parse
 partOne rules pageNumbers
