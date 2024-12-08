@@ -31,11 +31,17 @@ let toInt = function
     | Down -> 4
     | Left -> 8
 
+let getChar = function
+    | Up -> '^'
+    | Right -> '>'
+    | Down -> 'v'
+    | Left -> '<'
+
 let containsDirection direction value =
     let expected = toInt direction
     (value &&& toInt direction) = expected
 
-let setDirection direction value =
+let addDirection direction value =
     value ||| toInt direction
 
 let get (map: char[,]) ((x, y): Position) : char =
@@ -59,8 +65,6 @@ let isOutside (map: char[,]) ((x, y): Position) : bool =
     x < 0 || x >= map.GetLength(1) || y < 0 || y >= map.GetLength(0)
 
 let patrol (map: char[,]) (direction: Direction) ((x, y): Position) : int =
-    let markVisited (map: char[,]) pos = set map pos '*'
-
     let rec imp (map: char[,]) visitedSoFar direction (x, y) =
         let (struct (nx, ny) as next) = move direction (x, y)
         
@@ -69,69 +73,68 @@ let patrol (map: char[,]) (direction: Direction) ((x, y): Position) : int =
         else
             match get map next with
             | '#' -> imp map visitedSoFar (turn direction) (x, y)
-            | '*' -> imp map visitedSoFar direction (nx, ny)
-            | _ ->
-                markVisited map (nx, ny)
+            | '.' ->
+                set map (nx, ny) (getChar direction)
                 imp map (visitedSoFar + 1) direction (nx, ny)
+            | _ -> imp map visitedSoFar direction (nx, ny)
 
     let copy = Array2D.copy map
-    markVisited copy (x, y)
     imp copy 1 direction (x, y)
 
 let partOne (map: char[,]) =
     let startPosition = findGuardPosition map
     patrol map Up startPosition
 
+let printMap (map: char[,]) =
+    for y in 0 .. map.GetLength(0) - 1 do
+        for x in 0 .. map.GetLength(1) - 1 do
+            printf "%c" (map[y, x])
+        printfn ""
+
 let countOptions (map: char[,]) (initialDirection: Direction) (pos: Position) =
-    let visited = Dictionary<Position, int>()
-    let loopVisited = Dictionary<Position, int>()
+    let hitObstacles = Dictionary<Position, int>()
+    let loopHitObstacles = Dictionary<Position, int>()
     let rec isLoop (direction: Direction) (pos: Position) =
-        let rec imp (direction: Direction) (pos: Position) =
-            let next = move direction pos
-
-            if isOutside map next then
-                false
-            else if containsDirection direction (visited.GetValueOrDefault(next))
-                || containsDirection direction (loopVisited.GetValueOrDefault(next)) then
-                true
-            else
-                match get map next with
-                | '#' ->
-                    loopVisited[next] <- setDirection direction (loopVisited.GetValueOrDefault(next))
-                    imp (turn direction) pos
-                | _ ->
-                    imp direction next
-
         let next = move direction pos
 
         if isOutside map next then
             false
         else
             match get map next with
-            | '#' -> false
+            | '#' ->
+                if containsDirection direction (hitObstacles.GetValueOrDefault(next))
+                    || containsDirection direction (loopHitObstacles.GetValueOrDefault(next)) then
+                    true
+                else
+                    loopHitObstacles[next] <- addDirection direction (loopHitObstacles.GetValueOrDefault(next))
+                    isLoop (turn direction) pos
             | _ ->
-                loopVisited.Clear()
-                loopVisited[next] <- toInt direction
-                imp (turn direction) pos
+                isLoop direction next
 
     let rec imp (optionsSoFar: int) (direction: Direction) (pos: Position) =
         let next = move direction pos
 
         if isOutside map next then
+            printMap map
             optionsSoFar
         else
             match get map next with
             | '#' ->
-                visited[next] <- setDirection direction (visited.GetValueOrDefault(next))
+                hitObstacles[next] <- addDirection direction (hitObstacles.GetValueOrDefault(next))
                 imp optionsSoFar (turn direction) pos
-            | _ ->
+            | '.' -> // unvisited
+                loopHitObstacles.Clear()
+                loopHitObstacles[next] <- toInt direction
                 let newOptions =
-                    if isLoop direction pos then
+                    if isLoop (turn direction) pos then
                         optionsSoFar + 1
                     else
                         optionsSoFar
-
+                
+                set map next (getChar direction)
                 imp newOptions direction next
+            | _ -> // visited
+                imp optionsSoFar direction next
 
     imp 0 initialDirection pos
 
