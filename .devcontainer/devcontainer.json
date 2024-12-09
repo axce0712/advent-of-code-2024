@@ -9,7 +9,6 @@
         "tintoy.msbuild-project-tools"
       ],
       "settings": {
-        // "terminal.integrated.defaultProfile.linux": "zsh",
         "csharp.suppressDotnetInstallWarning": true
       }
     }
