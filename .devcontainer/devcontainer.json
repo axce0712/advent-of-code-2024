@@ -1,0 +1,16 @@
+{
+  "image": "mcr.microsoft.com/devcontainers/dotnet:1-9.0",
+  "features": {},
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "Ionide.Ionide-fsharp",
+        "tintoy.msbuild-project-tools"
+      ],
+      "settings": {
+        "csharp.suppressDotnetInstallWarning": true
+      }
+    }
+  }
+}
