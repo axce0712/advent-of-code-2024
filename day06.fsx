@@ -100,9 +100,6 @@ let partTwo (map: char[,]) =
         // Keeps track of visited positions and the direction when searching for a loop
         let loopVisited = Dictionary<Position, Directions>()
         let rec isLoop (direction: Direction) (pos: Position) =
-            // Track position and direction
-            loopVisited[pos] <- addDirection direction (loopVisited.GetValueOrDefault(pos))
-
             // Get next position
             let next = move direction pos
 
@@ -111,7 +108,10 @@ let partTwo (map: char[,]) =
                 false
             else 
                 match get map next with
-                | '#' -> isLoop (turn direction) pos
+                | '#' ->
+                    // Track position and direction
+                    loopVisited[pos] <- addDirection direction (loopVisited.GetValueOrDefault(pos))
+                    isLoop (turn direction) pos
                 | _ ->
                     if contains direction (loopVisited.GetValueOrDefault(next)) then
                         // If we have visited this position with the same direction
@@ -185,4 +185,7 @@ let input =
 let map = File.ReadLines("./input/day06.txt") |> parse
 
 partOne map
+
+#time
 partTwo map
+#time

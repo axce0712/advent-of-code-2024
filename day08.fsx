@@ -1,4 +1,5 @@
 open System.Collections.Generic
+open System.IO
 
 type Frequency = char
 
@@ -21,9 +22,6 @@ type Antinode =
         Position2: Position
         Locations: list<Position>
     }
-
-module Antinodes =
-    let isOverlapping
 
 let parse (lines: seq<string>) =
     let antennas = Dictionary<Frequency, list<Position>>()
@@ -84,12 +82,12 @@ let calculateLocations position1 position2 city =
             (bx, by)
     ]
 
-let countAntinodes (city: City) =
+let partOne (city: City) =
     city.Antennas
     |> Map.toSeq
-    |> Seq.sumBy (fun (_, positions) ->
-        allCombinations positions
-        |> List.sumBy (fun (pos1, pos2) -> calculateLocations pos1 pos2 city |> List.length))
+    |> Seq.collect (fun (_, ps) -> allCombinations ps |> Seq.collect (fun (p1, p2) -> calculateLocations p1 p2 city))
+    |> Seq.distinct
+    |> Seq.length
 
 let lines =
     @"............
@@ -106,5 +104,7 @@ let lines =
 ............"
         .Split('\n')
 
-parse lines
-|> countAntinodes
+// let city = parse lines
+
+let city = File.ReadLines("./input/day08.txt") |> parse
+partOne city
