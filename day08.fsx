@@ -64,7 +64,7 @@ let allCombinations list =
 
     imp [] list
 
-let calculateLocations position1 position2 city =
+let generateLocations position1 position2 city =
     let x1, y1 = position1
     let x2, y2 = position2
     let dx = x2 - x1
@@ -80,18 +80,43 @@ let calculateLocations position1 position2 city =
         let by = y2 + dy
         if City.isInRange (bx, by) city then
             (bx, by)
-
-        if ax + dx <> x1 || x1 + dx <> x2 || x2 + dx <> bx
-            || ay + dy <> y1 || y1 + dy <> y2 || y2 + dy <> by then
-            printfn "%A %A %A %A" (ax, ay) (x1, y1) (x2, y2) (bx, by)
     ]
 
-let partOne (city: City) =
+let solve f city =
     city.Antennas
     |> Map.toSeq
-    |> Seq.collect (fun (_, ps) -> allCombinations ps |> Seq.collect (fun (p1, p2) -> calculateLocations p1 p2 city))
+    |> Seq.collect (fun (_, ps) -> allCombinations ps |> Seq.collect (fun (p1, p2) -> f p1 p2 city))
     |> Seq.distinct
     |> Seq.length
+
+let partOne (city: City) =
+    solve generateLocations city
+
+let generateRepeatingLocations position1 position2 city =
+    [
+        yield position1
+        yield position2
+        let x1, y1 = position1
+        let x2, y2 = position2
+        let dx = x2 - x1
+        let dy = y2 - y1
+        let mutable ax = x1 - dx
+        let mutable ay = y1 - dy
+        while City.isInRange (ax, ay) city do
+            yield (ax, ay)
+            ax <- ax - dx
+            ay <- ay - dy
+        
+        let mutable bx = x2 + dx
+        let mutable by = y2 + dy
+        while City.isInRange (bx, by) city do
+            yield (bx, by)
+            bx <- bx + dx
+            by <- by + dy
+    ]
+
+let partTwo (city: City) =
+    solve generateRepeatingLocations city
 
 // let city =
 //     @"............
@@ -112,3 +137,4 @@ let partOne (city: City) =
 let city = File.ReadLines("./input/day08.txt") |> parse
 
 partOne city
+partTwo city
