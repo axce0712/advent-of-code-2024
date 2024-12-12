@@ -51,26 +51,30 @@ let blink times (stones: Stones) =
         |> Seq.map (fun stone -> KeyValuePair(stone, 1L))
         |> Dictionary<Stone, int64>
 
+    let delta = Dictionary<Stone, int64>()
+
     for _ in 1..times do
-        for kvp in
-            countCache
-            |> Seq.filter (fun kvp -> kvp.Value > 0L)
-            |> Seq.toArray do
-            let stone, countSoFar = (|KeyValue|) kvp
+        for kvp in countCache do
+            if kvp.Value > 0L then
+                let stone, countSoFar = (|KeyValue|) kvp
 
-            let newStones =
-                match blinkCache.TryGetValue(stone) with
-                | true, newStones -> newStones
-                | false, _ ->
-                    let newStones = blinkOnce stone
-                    blinkCache[stone] <- newStones
-                    newStones
+                let newStones =
+                    match blinkCache.TryGetValue(stone) with
+                    | true, newStones -> newStones
+                    | false, _ ->
+                        let newStones = blinkOnce stone
+                        blinkCache[stone] <- newStones
+                        newStones
 
-            for newStone in newStones do
-                countCache[newStone] <- countCache.GetValueOrDefault(newStone)
-                                        + countSoFar
+                for newStone in newStones do
+                    delta[newStone] <- delta.GetValueOrDefault(newStone) + countSoFar
 
-            countCache[stone] <- countCache[stone] - countSoFar
+                delta[stone] <- delta.GetValueOrDefault(stone) - countSoFar
+
+        for kvp in delta do
+            countCache[kvp.Key] <- countCache.GetValueOrDefault(kvp.Key) + kvp.Value
+
+        delta.Clear()
 
     countCache |> Seq.sumBy (fun kvp -> kvp.Value)
 
