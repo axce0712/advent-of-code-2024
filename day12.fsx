@@ -1,99 +1,100 @@
 open System.Collections.Generic
 open System.IO
+open System.Runtime.CompilerServices
 
 type Plant = char
 
 type Position = int * int
 
-type Region =
-    {
-        Plant: Plant
-        Area: Set<Position>
+type Area = Set<Position>
+
+type Garden = { Regions: Map<Plant, list<Area>> }
+
+let findRegion plant pos garden =
+    garden.Regions
+    |> Map.find plant
+    |> List.find (Set.contains pos)
+
+let parse (lines: seq<string>) = array2D lines
+
+let tryGetRow fallback (y: int) (arr: 'a[,]) : seq<'a> =
+    let f =
+        if y >= 0 && y < arr.GetLength(0) then
+            fun x -> arr[y, x]
+        else
+            fun _ -> fallback
+
+    seq {
+        for x in 0 .. arr.GetLength(1) - 1 do
+            yield f x
     }
 
-type Garden =
-    {
-        Regions: list<Region>
+let tryGetColumn fallback (x: int) (arr: 'a[,]) : seq<'a> =
+    let f =
+        if x >= 0 && x < arr.GetLength(1) then
+            fun y -> arr[y, x]
+        else
+            fun _ -> fallback
+
+    seq {
+        for y in 0 .. arr.GetLength(0) - 1 do
+            yield f y
     }
 
-let parse (lines: seq<string>) =
+let getRegions garden =
     let regions = Dictionary<Plant, list<HashSet<Position>>>()
-    let garden = array2D lines
-    let isInRange (x, y) garden =
-        x >= 0 && x < Array2D.length2 garden && y >= 0 && y < Array2D.length1 garden
 
     for y in 0 .. Array2D.length1 garden - 1 do
         for x in 0 .. Array2D.length2 garden - 1 do
             let plant = garden[y, x]
 
-            if plant <> '#' then
-                match regions.TryGetValue(plant) with
-                | true, areas when areas |> List.exists (_.Contains((x, y))) -> ()
-                | _ ->
-                    let area = HashSet<Position>()
-                    let queue = Queue<Position>()
-                    queue.Enqueue((x, y))
-                    while queue.Count > 0 do
-                        let (x, y) = queue.Dequeue()
-                        if isInRange (x, y) garden && garden[y, x] = plant then
+            match regions.TryGetValue(plant) with
+            | true, areas when areas |> Seq.exists (Seq.contains (x, y)) -> ()
+            | _ ->
+                let area = HashSet<Position>()
+                let queue = Queue<Position>([ (x, y) ])
+
+                while queue.Count > 0 do
+                    let (x, y) = queue.Dequeue()
+
+                    if x >= 0
+                       && x < Array2D.length2 garden
+                       && y >= 0
+                       && y < Array2D.length1 garden then
+                        if
+                            garden[y, x] = plant
+                            && not (area |> Seq.contains (x, y))
+                        then
                             area.Add((x, y)) |> ignore
-                            garden[y, x] <- '#'
-                            
-                            if not (area.Contains((x - 1, y))) then
-                                queue.Enqueue((x - 1, y))
 
-                            if not (area.Contains((x + 1, y))) then
-                                queue.Enqueue((x + 1, y))
-                            
-                            if not (area.Contains((x, y - 1))) then
-                                queue.Enqueue((x, y - 1))
-                            
-                            if not (area.Contains((x, y + 1))) then
-                                queue.Enqueue((x, y + 1))
+                            [ (0, 1); (0, -1); (1, 0); (-1, 0) ]
+                            |> List.iter (fun (dx, dy) -> queue.Enqueue((x + dx, y + dy)))
 
-                    regions[plant] <- area :: regions.GetValueOrDefault(plant, [])
+                regions[plant] <- area :: regions.GetValueOrDefault(plant, [])
 
-    {
-        Regions =
-            regions
-            |> Seq.collect (fun kvp ->
-                let (plant, areas) = (|KeyValue|) kvp
-                areas
-                |> Seq.map (fun area ->
-                    {
-                        Plant = plant
-                        Area = Set.ofSeq area
-                    }))
-            |> List.ofSeq
-    }
-
-let perimeter region =
-    region.Area
-    |> Seq.sumBy (fun (x, y) ->
-        4
-        - (if region.Area |> Set.contains (x - 1, y) then 1 else 0)
-        - (if region.Area |> Set.contains (x + 1, y) then 1 else 0)
-        - (if region.Area |> Set.contains (x, y - 1) then 1 else 0)
-        - (if region.Area |> Set.contains (x, y + 1) then 1 else 0))
+    { Regions =
+        regions
+        |> Seq.map (fun kvp -> kvp.Key, kvp.Value |> List.map Set.ofSeq)
+        |> Map.ofSeq }
 
 let partOne garden =
-    garden.Regions
-    |> List.sumBy (fun region -> perimeter region * Set.count region.Area)
+    let regions = getRegions garden
+    regions
 
-// let lines =
-//     @"RRRRIICCFF
-// RRRRIICCCF
-// VVRRRCCFFF
-// VVRCCCJFFF
-// VVVVCJJCFE
-// VVIVCCJJEE
-// VVIIICJJEE
-// MIIIIIJJEE
-// MIIISIJEEE
-// MMMISSJEEE"
-//     |> fun xs -> xs.Split('\n')
+let lines =
+    @"RRRRIICCFF
+RRRRIICCCF
+VVRRRCCFFF
+VVRCCCJFFF
+VVVVCJJCFE
+VVIVCCJJEE
+VVIIICJJEE
+MIIIIIJJEE
+MIIISIJEEE
+MMMISSJEEE"
+    |> fun xs -> xs.Split('\n')
 
-let lines = File.ReadLines("./input/day12.txt")
+// let lines = File.ReadLines("./input/day12.txt")
 
 let garden = parse lines
 

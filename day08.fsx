@@ -8,13 +8,13 @@ type Position = int * int
 type City =
     {
         Antennas: Map<Frequency, list<Position>>
-        XLength: int
-        YLength: int
+        Width: int
+        Height: int
     }
 
 module City =
     let isInRange (x, y) city =
-        0 <= x && x < city.XLength && 0 <= y && y < city.YLength
+        0 <= x && x < city.Width && 0 <= y && y < city.Height
 
 type Antinode =
     {
@@ -25,7 +25,7 @@ type Antinode =
 
 let parse (lines: seq<string>) =
     let antennas = Dictionary<Frequency, list<Position>>()
-    let mutable xLength = -1
+    let mutable width = -1
     let mutable y = 0
     for line in lines do
         for x in 0 .. line.Length - 1 do
@@ -33,17 +33,17 @@ let parse (lines: seq<string>) =
             | '.' -> ()
             | frequency -> antennas[frequency] <- (x, y) :: (antennas.GetValueOrDefault(frequency, []))
 
-        if xLength = -1 then
-            xLength <- line.Length
-        else if xLength <> line.Length then
+        if width = -1 then
+            width <- line.Length
+        else if width <> line.Length then
             failwith "Invalid input"
 
         y <- y + 1
 
     {
         Antennas = antennas |> Seq.map (|KeyValue|) |> Map.ofSeq
-        XLength = xLength
-        YLength = y
+        Width = width
+        Height = y
     }
 
 let allCombinations list =
