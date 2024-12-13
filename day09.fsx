@@ -133,4 +133,7 @@ let partTwo (input: DiskMap) = moveWholeFiles input |> checkSum
 let diskMap = File.ReadAllText("./input/day09.txt")
 
 partOne diskMap
+
+#time
 partTwo diskMap
+#time
