@@ -108,15 +108,11 @@ let distinctSides (before1, before2, positions) (current1, current2) =
     let newPositions =
         match (b1, b2), (p1, p2) with
         | Uneven, Uneven ->
-            let mutable newPositions = positions
-
-            if b1 <> p1 then
-                newPositions <- (b1, (bx1, by1)) :: newPositions
-
-            if b2 <> p2 then
-                newPositions <- (b2, (bx2, by2)) :: newPositions
-
-            newPositions
+            match (b1, p1), (b2, p2) with
+            | Uneven, Uneven -> (b1, (bx1, by1)) :: (b2, (bx2, by2)) :: positions
+            | Uneven, Even -> (b1, (bx1, by1)) :: positions
+            | Even, Uneven -> (b2, (bx2, by2)) :: positions
+            | Even, Even -> positions
         | Uneven, Even -> (b1, (bx1, by1)) :: (b2, (bx2, by2)) :: positions
         | _ -> positions
 
